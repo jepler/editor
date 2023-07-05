@@ -1,7 +1,38 @@
-import argparse
-import curses
+import dang as curses
 import sys
+import gc
 
+class MaybeDisableReload:
+    def __enter__(self):
+        try:
+            from supervisor import runtime
+        except ImportError:
+            return
+
+        self._old_autoreload = runtime.autoreload
+        runtime.autoreload = False
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            from supervisor import runtime
+        except ImportError:
+            return
+
+        runtime.autoreload = self._old_autoreload 
+
+def gc_mem_free_hint():
+    if hasattr(gc, 'mem_free'):
+        gc.collect()
+        return f" | free: {gc.mem_free()}"
+    return ""
+
+def readonly():
+    try:
+        import storage
+    except ImportError:
+        return False
+
+    return storage.getmount('/').readonly
 
 class Buffer:
     def __init__(self, lines):
@@ -92,6 +123,8 @@ class Cursor:
             self.row += 1
             self.col = 0
 
+    def end(self, buffer):
+        self.col = len(buffer[self.row])
 
 class Window:
     def __init__(self, n_rows, n_cols, row=0, col=0):
@@ -125,37 +158,67 @@ def left(window, buffer, cursor):
     window.up(cursor)
     window.horizontal_scroll(cursor)
 
-
 def right(window, buffer, cursor):
     cursor.right(buffer)
     window.down(buffer, cursor)
     window.horizontal_scroll(cursor)
 
+def home(window, buffer, cursor):
+    cursor.col = 0
+    window.horizontal_scroll(cursor)
 
-def main(stdscr):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("filename")
-    args = parser.parse_args()
+def end(window, buffer, cursor):
+    cursor.end(buffer)
+    window.horizontal_scroll(cursor)
 
-    with open(args.filename) as f:
+def editor(stdscr, filename):
+    with open(filename) as f:
         buffer = Buffer(f.read().splitlines())
 
     window = Window(curses.LINES - 1, curses.COLS - 1)
     cursor = Cursor()
 
+    stdscr.erase()
+
+    img = [''] * window.n_rows
+    def setline(row, line):
+        if img[row] == line:
+            return
+        img[row] = line
+        stdscr.addstr(row, 0, line)
+
     while True:
-        stdscr.erase()
-        for row, line in enumerate(buffer[window.row:window.row + window.n_rows]):
+        for row, line in enumerate(buffer[window.row:window.row + window.n_rows-1]):
             if row == cursor.row - window.row and window.col > 0:
                 line = "«" + line[window.col + 1:]
             if len(line) > window.n_cols:
                 line = line[:window.n_cols - 1] + "»"
-            stdscr.addstr(row, 0, line)
+            line += ' ' * (window.n_cols - len(line))
+            setline(row, line)
+
+        row = window.n_rows - 1
+        if readonly():
+            line = f"{filename:12} (readonly) | ^C: quit{gc_mem_free_hint()}"
+        else:
+            line = f"{filename:12} | ^X: write & exit | ^C: quit w/o save{gc_mem_free_hint()}"
+        setline(row, line)
+
         stdscr.move(*window.translate(cursor))
 
         k = stdscr.getkey()
-        if k == "q":
-            sys.exit(0)
+        if len(k) == 1 and ' ' <= k <= '~':
+            buffer.insert(cursor, k)
+            for _ in k:
+                right(window, buffer, cursor)
+        elif k == "\x18" and not readonly: # ctrl-x
+            with open(filename, "w") as f:
+                for row in buffer:
+                    f.write(row)
+            return
+        elif k == "KEY_HOME":
+            home(window, buffer, cursor)
+        elif k == "KEY_END":
+            end(window, buffer, cursor)
         elif k == "KEY_LEFT":
             left(window, buffer, cursor)
         elif k == "KEY_DOWN":
@@ -177,11 +240,14 @@ def main(stdscr):
             if (cursor.row, cursor.col) > (0, 0):
                 left(window, buffer, cursor)
                 buffer.delete(cursor)
-        else:
-            buffer.insert(cursor, k)
-            for _ in k:
-                right(window, buffer, cursor)
 
+def edit(filename):
+    with MaybeDisableReload():
+        curses.wrapper(editor, filename)
 
 if __name__ == "__main__":
-    curses.wrapper(main)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("filename")
+    args = parser.parse_args()
+    edit(filename)
