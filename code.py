@@ -1,5 +1,6 @@
-import editor
+import picker, editor
 try:
-    editor.edit("code.py")
+    filename = picker.pick_file()
+    editor.edit(filename)
 except KeyboardInterrupt:
     pass

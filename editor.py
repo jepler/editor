@@ -1,4 +1,5 @@
 import dang as curses
+import os
 import sys
 import gc
 
@@ -19,6 +20,13 @@ class MaybeDisableReload:
             return
 
         runtime.autoreload = self._old_autoreload 
+
+def os_exists(filename):
+    try:
+        os.stat(filename)
+        return True
+    except OSError:
+        return False
 
 def gc_mem_free_hint():
     if hasattr(gc, 'mem_free'):
@@ -172,15 +180,18 @@ def end(window, buffer, cursor):
     window.horizontal_scroll(cursor)
 
 def editor(stdscr, filename):
-    with open(filename) as f:
-        buffer = Buffer(f.read().splitlines())
+    if os_exists(filename):
+        with open(filename) as f:
+            buffer = Buffer(f.read().splitlines())
+    else:
+        buffer = Buffer([])
 
     window = Window(curses.LINES - 1, curses.COLS - 1)
     cursor = Cursor()
 
     stdscr.erase()
 
-    img = [''] * window.n_rows
+    img = [''] * curses.LINES
     def setline(row, line):
         if img[row] == line:
             return
@@ -188,7 +199,7 @@ def editor(stdscr, filename):
         stdscr.addstr(row, 0, line)
 
     while True:
-        for row, line in enumerate(buffer[window.row:window.row + window.n_rows-1]):
+        for row, line in enumerate(buffer[window.row:window.row + window.n_rows]):
             if row == cursor.row - window.row and window.col > 0:
                 line = "«" + line[window.col + 1:]
             if len(line) > window.n_cols:
@@ -196,7 +207,7 @@ def editor(stdscr, filename):
             line += ' ' * (window.n_cols - len(line))
             setline(row, line)
 
-        row = window.n_rows - 1
+        row = curses.LINES - 1
         if readonly():
             line = f"{filename:12} (readonly) | ^C: quit{gc_mem_free_hint()}"
         else:
@@ -243,7 +254,7 @@ def editor(stdscr, filename):
 
 def edit(filename):
     with MaybeDisableReload():
-        curses.wrapper(editor, filename)
+        return curses.wrapper(editor, filename)
 
 if __name__ == "__main__":
     import argparse

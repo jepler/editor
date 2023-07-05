@@ -98,7 +98,7 @@ def wrapper(func, *args, **kwds):
     stdscr = Screen()
     try:
         _nonblocking()
-        func(stdscr, *args, **kwds)
+        return func(stdscr, *args, **kwds)
     finally:
         _blocking()
         stdscr.move(LINES-1, 0)
