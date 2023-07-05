@@ -31,12 +31,17 @@ COLS = 80
 special_keys = {
         '\x1b': ..., # all prefixes of special keys must be entered as Ellipsis
         '\x1b[': ...,
+        '\x1b[5': ...,
+        '\x1b[6': ...,
         '\x1b[A': "KEY_UP",
         '\x1b[B': "KEY_DOWN",
         '\x1b[C': "KEY_RIGHT",
         '\x1b[D': "KEY_LEFT",
         '\x1b[H': "KEY_HOME",
         '\x1b[F': "KEY_END",
+        '\x1b[5~': "KEY_PGUP",
+        '\x1b[6~': "KEY_PGDN",
+        '\x1b[3~': "KEY_DELETE",
 }
 
 class Screen:

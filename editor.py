@@ -72,7 +72,7 @@ class Buffer:
         row, col = cursor.row, cursor.col
         if (row, col) < (self.bottom, len(self[row])):
             current = self.lines.pop(row)
-            if col < len(self[row]):
+            if col < len(current):
                 new = current[:col] + current[col + 1:]
                 self.lines.insert(row, new)
             else:
@@ -184,29 +184,32 @@ def editor(stdscr, filename):
         with open(filename) as f:
             buffer = Buffer(f.read().splitlines())
     else:
-        buffer = Buffer([])
+        buffer = Buffer([''])
 
     window = Window(curses.LINES - 1, curses.COLS - 1)
     cursor = Cursor()
 
     stdscr.erase()
 
-    img = [''] * curses.LINES
+    img = [None] * curses.LINES
     def setline(row, line):
         if img[row] == line:
             return
+        line += ' ' * (window.n_cols - len(line))
         img[row] = line
         stdscr.addstr(row, 0, line)
 
     while True:
+        lastrow = 0
         for row, line in enumerate(buffer[window.row:window.row + window.n_rows]):
+            lastrow = row
             if row == cursor.row - window.row and window.col > 0:
                 line = "«" + line[window.col + 1:]
             if len(line) > window.n_cols:
                 line = line[:window.n_cols - 1] + "»"
-            line += ' ' * (window.n_cols - len(line))
             setline(row, line)
-
+        for row in range(row+1, window.n_rows):
+            setline(row, '~~')
         row = curses.LINES - 1
         if readonly():
             line = f"{filename:12} (readonly) | ^C: quit{gc_mem_free_hint()}"
@@ -236,10 +239,20 @@ def editor(stdscr, filename):
             cursor.down(buffer)
             window.down(buffer, cursor)
             window.horizontal_scroll(cursor)
+        elif k == "KEY_PGDN":
+            for _ in range(window.n_rows):
+                cursor.down(buffer)
+                window.down(buffer, cursor)
+                window.horizontal_scroll(cursor)
         elif k == "KEY_UP":
             cursor.up(buffer)
             window.up(cursor)
             window.horizontal_scroll(cursor)
+        elif k == "KEY_PGUP":
+            for _ in range(window.n_rows):
+                cursor.up(buffer)
+                window.up(cursor)
+                window.horizontal_scroll(cursor)
         elif k == "KEY_RIGHT":
             right(window, buffer, cursor)
         elif k == "\n":
@@ -261,4 +274,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("filename")
     args = parser.parse_args()
-    edit(filename)
+    edit(args.filename)

@@ -1,6 +1,7 @@
 import picker, editor
-try:
+while True:
     filename = picker.pick_file()
-    editor.edit(filename)
-except KeyboardInterrupt:
-    pass
+    try:
+        editor.edit(filename)
+    except KeyboardInterrupt:
+        pass
