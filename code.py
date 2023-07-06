@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: MIT
 
-import picker, editor
+import editor
+import picker
+
 while True:
     filename = picker.pick_file()
     try:

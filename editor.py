@@ -3,28 +3,32 @@
 #
 # SPDX-License-Identifier: MIT
 
-import dang as curses
-import os
-import sys
 import gc
+import os
+
+import dang as curses
+
 
 class MaybeDisableReload:
     def __enter__(self):
         try:
-            from supervisor import runtime
+            from supervisor import runtime  # pylint: disable=import-outside-toplevel
         except ImportError:
             return
 
-        self._old_autoreload = runtime.autoreload
+        self._old_autoreload = (  # pylint: disable=attribute-defined-outside-init
+            runtime.autoreload
+        )
         runtime.autoreload = False
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
-            from supervisor import runtime
+            from supervisor import runtime  # pylint: disable=import-outside-toplevel
         except ImportError:
             return
 
-        runtime.autoreload = self._old_autoreload 
+        runtime.autoreload = self._old_autoreload
+
 
 def os_exists(filename):
     try:
@@ -33,19 +37,22 @@ def os_exists(filename):
     except OSError:
         return False
 
+
 def gc_mem_free_hint():
-    if hasattr(gc, 'mem_free'):
+    if hasattr(gc, "mem_free"):
         gc.collect()
         return f" | free: {gc.mem_free()}"
     return ""
 
+
 def readonly():
     try:
-        import storage
+        import storage  # pylint: disable=import-outside-toplevel
     except ImportError:
         return False
 
-    return storage.getmount('/').readonly
+    return storage.getmount("/").readonly
+
 
 class Buffer:
     def __init__(self, lines):
@@ -78,11 +85,11 @@ class Buffer:
         if (row, col) < (self.bottom, len(self[row])):
             current = self.lines.pop(row)
             if col < len(current):
-                new = current[:col] + current[col + 1:]
+                new = current[:col] + current[col + 1 :]
                 self.lines.insert(row, new)
             else:
-                next = self.lines.pop(row)
-                new = current + next
+                nextline = self.lines.pop(row)
+                new = current + nextline
                 self.lines.insert(row, new)
 
 
@@ -112,7 +119,7 @@ class Cursor:
     def _clamp_col(self, buffer):
         self._col = min(self._col_hint, len(buffer[self.row]))
 
-    def up(self, buffer):
+    def up(self, buffer):  # pylint: disable=invalid-name
         if self.row > 0:
             self.row -= 1
             self._clamp_col(buffer)
@@ -139,6 +146,7 @@ class Cursor:
     def end(self, buffer):
         self.col = len(buffer[self.row])
 
+
 class Window:
     def __init__(self, n_rows, n_cols, row=0, col=0):
         self.n_rows = n_rows
@@ -150,7 +158,7 @@ class Window:
     def bottom(self):
         return self.row + self.n_rows - 1
 
-    def up(self, cursor):
+    def up(self, cursor):  # pylint: disable=invalid-name
         if cursor.row == self.row - 1 and self.row > 0:
             self.row -= 1
 
@@ -171,25 +179,29 @@ def left(window, buffer, cursor):
     window.up(cursor)
     window.horizontal_scroll(cursor)
 
+
 def right(window, buffer, cursor):
     cursor.right(buffer)
     window.down(buffer, cursor)
     window.horizontal_scroll(cursor)
 
-def home(window, buffer, cursor):
+
+def home(window, buffer, cursor):  # pylint: disable=unused-argument
     cursor.col = 0
     window.horizontal_scroll(cursor)
+
 
 def end(window, buffer, cursor):
     cursor.end(buffer)
     window.horizontal_scroll(cursor)
 
-def editor(stdscr, filename):
+
+def editor(stdscr, filename):  # pylint: disable=too-many-branches,too-many-statements
     if os_exists(filename):
-        with open(filename) as f:
+        with open(filename, "r", encoding="utf-8") as f:
             buffer = Buffer(f.read().splitlines())
     else:
-        buffer = Buffer([''])
+        buffer = Buffer([""])
 
     window = Window(curses.LINES - 1, curses.COLS - 1)
     cursor = Cursor()
@@ -197,24 +209,25 @@ def editor(stdscr, filename):
     stdscr.erase()
 
     img = [None] * curses.LINES
+
     def setline(row, line):
         if img[row] == line:
             return
         img[row] = line
-        line += ' ' * (window.n_cols - len(line))
+        line += " " * (window.n_cols - len(line))
         stdscr.addstr(row, 0, line)
 
     while True:
         lastrow = 0
-        for row, line in enumerate(buffer[window.row:window.row + window.n_rows]):
+        for row, line in enumerate(buffer[window.row : window.row + window.n_rows]):
             lastrow = row
             if row == cursor.row - window.row and window.col > 0:
-                line = "«" + line[window.col + 1:]
+                line = "«" + line[window.col + 1 :]
             if len(line) > window.n_cols:
-                line = line[:window.n_cols - 1] + "»"
+                line = line[: window.n_cols - 1] + "»"
             setline(row, line)
-        for row in range(row+1, window.n_rows):
-            setline(row, '~~ EOF ~~')
+        for row in range(lastrow + 1, window.n_rows):
+            setline(row, "~~ EOF ~~")
         row = curses.LINES - 1
         if readonly():
             line = f"{filename:12} (readonly) | ^C: quit{gc_mem_free_hint()}"
@@ -225,12 +238,12 @@ def editor(stdscr, filename):
         stdscr.move(*window.translate(cursor))
 
         k = stdscr.getkey()
-        if len(k) == 1 and ' ' <= k <= '~':
+        if len(k) == 1 and " " <= k <= "~":
             buffer.insert(cursor, k)
             for _ in k:
                 right(window, buffer, cursor)
-        elif k == "\x18" and not readonly: # ctrl-x
-            with open(filename, "w") as f:
+        elif k == "\x18" and not readonly:  # ctrl-x
+            with open(filename, "w", encoding="utf-8") as f:
                 for row in buffer:
                     f.write(row)
             return
@@ -270,12 +283,15 @@ def editor(stdscr, filename):
                 left(window, buffer, cursor)
                 buffer.delete(cursor)
 
+
 def edit(filename):
     with MaybeDisableReload():
         return curses.wrapper(editor, filename)
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("filename")
     args = parser.parse_args()

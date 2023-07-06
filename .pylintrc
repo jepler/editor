@@ -1,0 +1,12 @@
+#SPDX-FileCopyrightText: 2021 Jeff Epler
+#
+#SPDX-License-Identifier: MIT
+[MASTER]
+py-version=3.7
+
+[MESSAGES CONTROL]
+disable=duplicate-code,line-too-long,protected-access,missing-function-docstring,missing-module-docstring,missing-class-docstring
+
+[BASIC]
+argument-rgx=[a-z][a-z0-9_]*
+variable-naming-style=any

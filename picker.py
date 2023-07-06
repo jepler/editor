@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: MIT
 
 import os
+
 import dang as curses
 
 always = ["code.py", "boot.py", "settings.toml", "boot_out.txt"]
 good_extensions = [".py", ".toml", ".txt", ".json"]
+
 
 def os_exists(filename):
     try:
@@ -15,8 +17,10 @@ def os_exists(filename):
     except OSError:
         return False
 
+
 def isdir(filename):
     return os.stat(filename)[0] & 0o40_000
+
 
 def has_good_extension(filename):
     for g in good_extensions:
@@ -24,10 +28,11 @@ def has_good_extension(filename):
             return True
     return False
 
-def picker(stdscr, options, notes=[], start_idx=0):
+
+def picker(stdscr, options, notes=(), start_idx=0):
     stdscr.erase()
-    stdscr.addstr(curses.LINES-1, 0, "Enter: select | ^C: quit")
-    del options[curses.LINES-1:]
+    stdscr.addstr(curses.LINES - 1, 0, "Enter: select | ^C: quit")
+    del options[curses.LINES - 1 :]
     for row, option in enumerate(options):
         if row < len(notes) and (note := notes[row]):
             option = f"{option} {note}"
@@ -45,16 +50,21 @@ def picker(stdscr, options, notes=[], start_idx=0):
 
         k = stdscr.getkey()
 
-        if k == 'KEY_DOWN':
+        if k == "KEY_DOWN":
             idx = min(idx + 1, len(options) - 1)
-        elif k == 'KEY_UP':
+        elif k == "KEY_UP":
             idx = max(idx - 1, 0)
-        elif k == '\n':
+        elif k == "\n":
             return options[idx]
+
 
 def pick_file():
     options = always[:] + sorted(
-        (g for g in os.listdir('.') if g not in always and not isdir(g) and not g.startswith('.')),
+        (
+            g
+            for g in os.listdir(".")
+            if g not in always and not isdir(g) and not g.startswith(".")
+        ),
         key=lambda filename: (not has_good_extension(filename), filename),
     )
     notes = [None if os_exists(filename) else "(NEW)" for filename in options]

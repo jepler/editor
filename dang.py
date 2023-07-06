@@ -8,9 +8,10 @@ import sys
 try:
     import termios
 
-    _orig_attr = None
+    _orig_attr = None  # pylint: disable=invalid-name
+
     def _nonblocking():
-        global _orig_attr
+        global _orig_attr  # pylint: disable=global-statement
         _orig_attr = termios.tcgetattr(sys.stdin)
         attr = termios.tcgetattr(sys.stdin)
         attr[3] &= ~(termios.ECHO | termios.ICANON)
@@ -22,42 +23,46 @@ try:
         if _orig_attr is not None:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, _orig_attr)
 
-except:
+except ImportError:
+
     def _nonblocking():
         pass
 
     def _blocking():
         pass
 
+
 LINES = 24
 COLS = 80
 
 special_keys = {
-        '\x1b': ..., # all prefixes of special keys must be entered as Ellipsis
-        '\x1b[': ...,
-        '\x1b[5': ...,
-        '\x1b[6': ...,
-        '\x1b[A': "KEY_UP",
-        '\x1b[B': "KEY_DOWN",
-        '\x1b[C': "KEY_RIGHT",
-        '\x1b[D': "KEY_LEFT",
-        '\x1b[H': "KEY_HOME",
-        '\x1b[F': "KEY_END",
-        '\x1b[5~': "KEY_PGUP",
-        '\x1b[6~': "KEY_PGDN",
-        '\x1b[3~': "KEY_DELETE",
+    "\x1b": ...,  # all prefixes of special keys must be entered as Ellipsis
+    "\x1b[": ...,
+    "\x1b[5": ...,
+    "\x1b[6": ...,
+    "\x1b[A": "KEY_UP",
+    "\x1b[B": "KEY_DOWN",
+    "\x1b[C": "KEY_RIGHT",
+    "\x1b[D": "KEY_LEFT",
+    "\x1b[H": "KEY_HOME",
+    "\x1b[F": "KEY_END",
+    "\x1b[5~": "KEY_PGUP",
+    "\x1b[6~": "KEY_PGDN",
+    "\x1b[3~": "KEY_DELETE",
 }
+
 
 class Screen:
     def __init__(self):
         self._poll = select.poll()
         self._poll.register(sys.stdin, select.POLLIN)
-        self._pending = ''
+        self._pending = ""
 
     def _sys_stdin_readable(self):
-        return hasattr(sys.stdin, 'readable') and sys.stdin.readable()
+        return hasattr(sys.stdin, "readable") and sys.stdin.readable()
+
     def _sys_stdout_flush(self):
-        if hasattr(sys.stdout, 'flush'):
+        if hasattr(sys.stdout, "flush"):
             sys.stdout.flush()
 
     def _terminal_read_blocking(self):
@@ -71,11 +76,14 @@ class Screen:
 
     def move(self, y, x):
         print(end=f"\033[{y+1};{x+1}H")
+
     def erase(self):
         print(end="\033H\033[2J")
+
     def addstr(self, y, x, text):
         self.move(y, x)
         print(end=text)
+
     def getkey(self):
         self._sys_stdout_flush()
         pending = self._pending
@@ -98,10 +106,11 @@ class Screen:
             if code is None:
                 self._pending = c[1:]
                 return c[0]
-            elif code is not Ellipsis:
+            if code is not Ellipsis:
                 return code
 
             pending = c
+
 
 def wrapper(func, *args, **kwds):
     stdscr = Screen()
@@ -110,5 +119,5 @@ def wrapper(func, *args, **kwds):
         return func(stdscr, *args, **kwds)
     finally:
         _blocking()
-        stdscr.move(LINES-1, 0)
+        stdscr.move(LINES - 1, 0)
         print("\n")
