@@ -4,7 +4,7 @@
 
 import os
 
-import dang as curses
+from . import dang as curses
 
 always = ["code.py", "boot.py", "settings.toml", "boot_out.txt"]
 good_extensions = [".py", ".toml", ".txt", ".json"]

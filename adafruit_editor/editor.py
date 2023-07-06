@@ -6,7 +6,7 @@
 import gc
 import os
 
-import dang as curses
+from . import dang as curses
 
 
 class MaybeDisableReload:
@@ -287,12 +287,3 @@ def editor(stdscr, filename):  # pylint: disable=too-many-branches,too-many-stat
 def edit(filename):
     with MaybeDisableReload():
         return curses.wrapper(editor, filename)
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("filename")
-    args = parser.parse_args()
-    edit(args.filename)

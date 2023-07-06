@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: MIT
 
-import editor
-import picker
+from adafruit_editor import editor, picker
 
 while True:
-    filename = picker.pick_file()
+    try:
+        filename = picker.pick_file()
+    except KeyboardInterrupt:
+        break
+
     try:
         editor.edit(filename)
     except KeyboardInterrupt:

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-from dang import wrapper
+from adafruit_editor.dang import wrapper
 
 
 def main(stdscr):
