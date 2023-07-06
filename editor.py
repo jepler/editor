@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2020 Wasim Lorgat
+# SPDX-FileCopyrightText: 2023 Jeff Epler for Adafruit Industries
+#
+# SPDX-License-Identifier: MIT
+
 import dang as curses
 import os
 import sys
@@ -195,8 +200,8 @@ def editor(stdscr, filename):
     def setline(row, line):
         if img[row] == line:
             return
-        line += ' ' * (window.n_cols - len(line))
         img[row] = line
+        line += ' ' * (window.n_cols - len(line))
         stdscr.addstr(row, 0, line)
 
     while True:
@@ -209,7 +214,7 @@ def editor(stdscr, filename):
                 line = line[:window.n_cols - 1] + "»"
             setline(row, line)
         for row in range(row+1, window.n_rows):
-            setline(row, '~~')
+            setline(row, '~~ EOF ~~')
         row = curses.LINES - 1
         if readonly():
             line = f"{filename:12} (readonly) | ^C: quit{gc_mem_free_hint()}"
